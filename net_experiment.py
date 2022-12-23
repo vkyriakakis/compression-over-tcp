@@ -3,7 +3,11 @@ from mininet.net import Mininet
 from mininet.node import OVSBridge, OVSSwitch, RemoteController
 from mininet.link import TCLink
 from mininet.clean import Cleanup
+import random 
 import time
+import os
+import subprocess
+import sys
 
 class SingleSwitchTopo(Topo):
     "Single switch connected to n hosts."
@@ -16,7 +20,7 @@ class SingleSwitchTopo(Topo):
         host = self.addHost('h2')
         self.addLink(host, switch, bw=bw_down, loss=loss2, delay=delay2)
 
-def test(bw_up, bw_down, loss, delay, iters):
+def test(bw_up, bw_down, loss, delay, iters, filename, chunk_size):
 	server_port = 35600
 
 	topo = SingleSwitchTopo(bw_up=bw_up, bw_down=bw_down, loss1=loss, loss2=0, 
@@ -28,23 +32,37 @@ def test(bw_up, bw_down, loss, delay, iters):
 	h1 = net["h1"]
 	h2 = net["h2"]
 
-	# Test standard TCP for comparison
+	# Test plain TCP with the sequential execution method
 	avg_tcp_time = 0
 
 	for i in range(iters):
-		h1.sendCmd("while ! ./oneway_client {} 10240 {} < test_files/world192.txt; do sleep 0.05; done &".format(h2.IP(), server_port + i))
-		avg_tcp_time += float(h2.cmd("./oneway_server 10240 {} 2>&1 > copy".format(server_port + i)))
+		subprocess.run("LD_PRELOAD=$PWD/measure_tcp_net.so ./oneway_client 127.0.0.1 {} 60000 n < test_files/{}".format(chunk_size, filename), shell=True)
+
+		h1.sendCmd("while ! python3.8 mininet_client.py {} {} ; do sleep 0.05; done &".format(h2.IP(), server_port + i + iters))
+		h2.cmd("python3.8 mininet_server.py {}".format(server_port + i + iters))
 		h1.waitOutput()
+
+		p = subprocess.run("LD_PRELOAD=$PWD/measure_tcp_net.so ./oneway_server {} 60000 n 2>&1 > copy".format(chunk_size), capture_output=True, shell=True)
+		avg_tcp_time += float(p.stdout)
+
+		subprocess.run("rm *.log", shell=True)
 
 	avg_tcp_time /= iters
 
-	# Test my library
+	# Test my library with the new way of measuring
 	avg_comp_time = 0
 
 	for i in range(iters):
-		h1.sendCmd("while ! LD_PRELOAD=$PWD/mytcp.so ./oneway_client {} 10240 {} < test_files/world192.txt; do sleep 0.05; done &".format(h2.IP(), server_port + i + iters))
-		avg_comp_time += float(h2.cmd("LD_PRELOAD=$PWD/mytcp.so ./oneway_server 10240 {} 2>&1 > copy".format(server_port + i + iters)))
+		subprocess.run("LD_PRELOAD=$PWD/measure_lib_perf.so ./oneway_client 127.0.0.1 {} 60000 n < test_files/{}".format(chunk_size, filename), shell=True)
+
+		h1.sendCmd("while ! python3.8 mininet_client.py {} {} ; do sleep 0.05; done &".format(h2.IP(), server_port + i + iters))
+		h2.cmd("python3.8 mininet_server.py {}".format(server_port + i + iters))
 		h1.waitOutput()
+
+		p = subprocess.run("LD_PRELOAD=$PWD/measure_lib_perf.so ./oneway_server {} 60000 n 2>&1 > copy".format(chunk_size), capture_output=True, shell=True)
+		avg_comp_time += float(p.stdout)
+
+		subprocess.run("rm *.log", shell=True)
 
 	avg_comp_time /= iters
 
@@ -53,7 +71,18 @@ def test(bw_up, bw_down, loss, delay, iters):
 	return avg_tcp_time, avg_comp_time
 
 if __name__ == "__main__":
-	print("delay, bandwidth (Mbps), loss rate (%), tcp avg time (sec), lib avg time (sec)", flush = True)	
+	print("delay, bandwidth (Mbps), loss rate (%), tcp avg time (sec), lib avg time (sec)", flush = True)
+
+	if len(sys.argv) != 5:
+		print("Run with python3.8 net_experiment.py <filename> <chunk_size> <iters> <buf_size>")
+		sys.exit(1)
+
+	filename = sys.argv[1]
+	chunk_size = int(sys.argv[2])
+	iters = int(sys.argv[3])
+	buf_size = sys.argv[4]
+
+	os.system("gcc -DBUF_SIZE={} -DNET_PERF -shared -fPIC measure_lib_perf.c -o measure_lib_perf.so -ldl -lz".format(buf_size))
 
 	# Realistic parameters
 
@@ -63,65 +92,61 @@ if __name__ == "__main__":
 	# 802.11n (WiFi): 40-50 Mbps, 10ms, 1% packet loss
 
 	# # Gbps Eth
-	# avg_tcp_time, avg_lib_time = test(1000, 1000, 0, 0.1, 10)
-	# print("Gbps Eth, 0.1ms, 1000, 1000, 0%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
+	avg_tcp_time, avg_lib_time = test(1000, 1000, 0, 0.1, iters, filename, chunk_size)
+	print("Gbps Eth, 0.1ms, 1000, 1000, 0%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
 
-	# # 802.11n (WiFi)
-	# avg_tcp_time, avg_lib_time = test(40, 40, 1, 10, 10)
-	# print("WiFi, 10ms, 40, 40, 1%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
+	# 802.11n (WiFi)
+	avg_tcp_time, avg_lib_time = test(40, 40, 1, 10, iters, filename, chunk_size)
+	print("WiFi, 10ms, 40, 40, 1%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
 
-	# # 4G
-	# avg_tcp_time, avg_lib_time = test(20, 6, 0, 25, 10)
-	# print("4G, 25ms, 20, 6, 0%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
+	# 4G
+	avg_tcp_time, avg_lib_time = test(20, 6, 0, 25, iters, filename, chunk_size)
+	print("4G, 25ms, 20, 6, 0%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
 
-	# # 5G
-	# avg_tcp_time, avg_lib_time = test(300, 64, 0, 13, 10)
-	# print("5G, 13ms, 300, 64, 0%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
+	# 5G
+	avg_tcp_time, avg_lib_time = test(300, 64, 0, 13, iters, filename, chunk_size)
+	print("5G, 13ms, 300, 64, 0%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
 
-	# # Delay plot measurements (perfect conditions)
-	# bw = 1000
-	# lr = 0
-	# for d in [0, 1, 5, 10, 20, 40, 60, 100]:
-	# 	avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, 10)
-	# 	print("{}, {}, {}".format(d, avg_tcp_time, avg_lib_time), flush = True)
+	# Delay plot measurements (perfect conditions)
+	bw = 1000
+	lr = 0
+	for d in [0, 1, 5, 10, 20, 40, 60, 100]:
+		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
+		print("{}, {}, {}".format(d, avg_tcp_time, avg_lib_time), flush = True)
 
-	# # Bandwidth plot measurements (perfect conditions)
-	# d = 0
-	# lr = 0
-	# for bw in [5, 10, 20, 40, 100, 200, 500, 800, 1000]:
-	# 	avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, 10)
-	# 	print("{}, {}, {}".format(bw, avg_tcp_time, avg_lib_time), flush = True)
+	# Bandwidth plot measurements (perfect conditions)
+	d = 0
+	lr = 0
+	for bw in [5, 10, 20, 40, 100, 200, 500, 800, 1000]:
+		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
+		print("{}, {}, {}".format(bw, avg_tcp_time, avg_lib_time), flush = True)
 
-	# # Packet loss plot measurements (perfect conditions)
-	# bw = 1000
-	# d = 0
-	# for lr in [0, 1, 2, 5, 8, 10]:
-	# 	avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, 10)
-	# 	print("{}, {}, {}".format(lr, avg_tcp_time, avg_lib_time), flush = True)
-
-	# lr = 20
-	# avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, 1)
-	# print("{}, {}, {}".format(lr, avg_tcp_time, avg_lib_time), flush = True)
+	# Packet loss plot measurements (perfect conditions)
+	bw = 1000
+	d = 0
+	for lr in [0, 1, 2, 5, 8, 10]:
+		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
+		print("{}, {}, {}".format(lr, avg_tcp_time, avg_lib_time), flush = True)
 
 	# Delay plot measurements (loss, bw)
 	bw = 40
 	lr = 2
 	for d in [0, 1, 5, 10, 20, 40, 60, 100]:
-		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, 10)
+		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
 		print("{}, {}, {}".format(d, avg_tcp_time, avg_lib_time), flush = True)
 
 	# Bandwidth plot measurements (delay, loss)
 	d = 20
 	lr = 2  
 	for bw in [5, 10, 20, 40, 100, 200, 500, 800, 1000]:
-		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, 10)
+		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
 		print("{}, {}, {}".format(bw, avg_tcp_time, avg_lib_time), flush = True)	
 
 	# Packet loss plot measurements (bw, delay)
 	bw = 40
 	d = 20
 	for lr in [0, 1, 2, 5, 8, 10]:
-		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, 10)
+		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
 		print("{}, {}, {}".format(lr, avg_tcp_time, avg_lib_time), flush = True)
 
 

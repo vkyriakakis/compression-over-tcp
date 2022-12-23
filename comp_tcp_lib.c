@@ -7,7 +7,11 @@
 #include <dlfcn.h>
 #include <errno.h>
 #include <time.h>
+#include <sys/time.h>
+#include <unistd.h>
 #include <zlib.h>
+
+// Compile with gcc -DBUF_SIZE=204800 -shared -fPIC mytcp.c -o mytcp.so -ldl -lz
 
 //#define BUF_SIZE 1024 // 126 KB
 #define MAX_SOCKETS 1024
@@ -16,6 +20,7 @@
 typedef int (*orig_socket_t)(int domain, int type, int protocol);
 typedef int (*orig_listen_t)(int sockfd, int backlog);
 typedef int (*orig_accept_t)(int sockfd, struct sockaddr *addr, socklen_t *socklen);
+typedef int (*orig_connect_t)(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 typedef int (*orig_send_t)(int sockfd, const void *buf, size_t len, int flags);
 typedef int (*orig_recv_t)(int sockfd, void *buf, size_t len, int flags);
 typedef int (*orig_close_t)(int fd);
@@ -166,6 +171,7 @@ int _send_comp_data(int sockfd, int comp_len, int flags) {
         if (ret < 0) {
             perror("orig send data");
             return -1;
+
         }
 
         total_sent += ret;
@@ -178,7 +184,7 @@ ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
     uLong comp_len;
     size_t rem_len = len;
     int ret;
-    struct timespec start, end;
+    clock_t start, end;
 
     // If the data wouldn't fill the send buffer, put it inside and return
     if (len + send_len[sockfd] < BUF_SIZE) {
@@ -194,17 +200,13 @@ ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
 
         // Perform the compression using zlib
         comp_len = compressBound(BUF_SIZE);
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+
         ret = compress2(send_comp_buf[sockfd], &comp_len, (Bytef*)send_buf[sockfd], BUF_SIZE, Z_DEFAULT_COMPRESSION);
         if (ret != Z_OK) {
              _print_zlib_error("compress2", ret);
             errno = ENOMEM;
             return -1;
         }
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
-
-        //fprintf(stderr, "C %lf\n", end.tv_sec - start.tv_sec + 1E-9 * (end.tv_nsec - start.tv_nsec));
-        //fprintf(stderr, "R %lf\n", (double)BUF_SIZE / comp_len);
 
         if (_send_comp_data(sockfd, comp_len, flags) < 0) {
             return -1;
@@ -216,17 +218,13 @@ ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
     while (rem_len >= BUF_SIZE) {
         // Perform the compression using zlib
         comp_len = compressBound(BUF_SIZE);
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+
         ret = compress2(send_comp_buf[sockfd], &comp_len, (Bytef*)(buf + len - rem_len), BUF_SIZE, Z_DEFAULT_COMPRESSION);
         if (ret != Z_OK) {
              _print_zlib_error("compress2", ret);
             errno = ENOMEM;
             return -1;
         }
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
-
-        //fprintf(stderr, "C %lf\n", end.tv_sec - start.tv_sec + 1E-9 * (end.tv_nsec - start.tv_nsec));
-        //fprintf(stderr, "R %lf\n", (double)BUF_SIZE / comp_len);
 
         if (_send_comp_data(sockfd, comp_len, flags) < 0) {
             return -1;
@@ -245,7 +243,7 @@ ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
     return len;
 }
 
-int _recv_comp_data(int sockfd, uLong *comp_len_p, int flags, int received_bytes) {
+int _recv_comp_data(int sockfd, uLong *comp_len_p, int flags, int received_bytes) {  
     orig_recv_t orig_recv = (orig_recv_t)dlsym(RTLD_NEXT,"recv");
     ssize_t ret;
     size_t total_recv = 0;
@@ -302,12 +300,11 @@ int _recv_comp_data(int sockfd, uLong *comp_len_p, int flags, int received_bytes
 int _flush(int fd) {
     uLong comp_len;
     int ret;
-    struct timespec start, end;
+    clock_t start, end;
 
     if (send_len[fd] > 0) {
         comp_len = compressBound(send_len[fd]);
 
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
         ret = compress2(send_comp_buf[fd], &comp_len, (Bytef*)send_buf[fd], 
                         send_len[fd], Z_DEFAULT_COMPRESSION);
         if (ret != Z_OK) {
@@ -315,10 +312,6 @@ int _flush(int fd) {
             errno = ENOMEM;
             return -1;
         }
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
-
-        //fprintf(stderr, "C %lf\n", end.tv_sec - start.tv_sec + 1E-9 * (end.tv_nsec - start.tv_nsec));
-        //fprintf(stderr, "R %lf\n", (double)send_len[fd] / comp_len);
 
         if (_send_comp_data(fd, comp_len, 0) < 0) {
             return -1;
@@ -335,7 +328,7 @@ ssize_t recv(int sockfd, void *buf, size_t len, int flags) {
     uLong decomp_len;
     int ret;
     size_t total_recv = 0;
-    struct timespec start, end;
+    clock_t start, end;
 
     // If the requested data is <= that in the receive buffer, just fetch the data
     if (len < recv_len[sockfd] - recv_pos[sockfd]) {
@@ -373,11 +366,8 @@ ssize_t recv(int sockfd, void *buf, size_t len, int flags) {
             return total_recv;
         }
 
-        //fprintf(stderr, "recv comp len: %lu\n", comp_len);
-
         // Perform the decompression using zlib
         decomp_len = len - total_recv;
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
         ret = uncompress(buf + total_recv, &decomp_len, recv_comp_buf[sockfd], comp_len);
         if (ret != Z_OK) {
             fprintf(stderr, "total_recv = %lu, len = %lu, comp_len = %lu\n", total_recv, len, comp_len);
@@ -385,9 +375,6 @@ ssize_t recv(int sockfd, void *buf, size_t len, int flags) {
             errno = ENOMEM;
             return -1;
         }
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
-
-        //fprintf(stderr, "D %lf\n", end.tv_sec - start.tv_sec + 1E-9 * (end.tv_nsec - start.tv_nsec));
 
         total_recv += decomp_len;
     }
@@ -415,16 +402,12 @@ ssize_t recv(int sockfd, void *buf, size_t len, int flags) {
     // Perform the decompression using zlib
     recv_len[sockfd] = BUF_SIZE;
 
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
     ret = uncompress(recv_buf[sockfd], &recv_len[sockfd], recv_comp_buf[sockfd], comp_len);
     if (ret != Z_OK) {
         _print_zlib_error("uncompress II", ret);
         errno = ENOMEM;
         return -1;
     }
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
-
-    //fprintf(stderr, "D %lf\n", end.tv_sec - start.tv_sec + 1E-9 * (end.tv_nsec - start.tv_nsec));
 
     // Copy the needed bytes to the buffer (a flush might have happened, so check if the data is enough)
     if (len - total_recv < recv_len[sockfd]) {

@@ -15,14 +15,16 @@ int main(int argc, char *argv[]) {
 	ssize_t bytes_recv;
 	int chunk_size;
 	int server_port;
-	struct timeval start, end, diff;
+	char should_measure;
+	struct timeval end;
 
-	if (argc != 3) {
-		fprintf(stderr, "Run with ./server <data-chunk-bytes> <data port> \n");
+	if (argc != 4) {
+		fprintf(stderr, "Run with ./server <data-chunk-bytes> <data port> <measure [y/n]>\n");
 		return 1;
 	}
 	chunk_size = atoi(argv[1]);
 	server_port = atoi(argv[2]);
+	should_measure = argv[3][0] == 'y' ? 1 : 0;
 
 	chunk = malloc(chunk_size);
 	if (chunk == NULL) {
@@ -56,9 +58,6 @@ int main(int argc, char *argv[]) {
    		return 1;
    	}
 
-   	// Measure wall clock time because we want to include the network delays in the measurement
-   	gettimeofday(&start, NULL);
-
     do {
     	bytes_recv = recv(cli_fd, chunk, chunk_size, 0);
     	if (bytes_recv == -1) {
@@ -75,16 +74,10 @@ int main(int argc, char *argv[]) {
     	}
     } while (1);
 
-    gettimeofday(&end, NULL);
-
-    // Timeval subtraction needs borrowing
-	diff.tv_sec = end.tv_sec - start.tv_sec;
-	if ((diff.tv_usec = end.tv_usec - start.tv_usec) < 0) {
-		diff.tv_usec += 1000000;
-		diff.tv_sec--; 
-	}
-
-    fprintf(stderr, "%ld.%06ld", diff.tv_sec, diff.tv_usec);
+    if (should_measure) {
+    	gettimeofday(&end, NULL);
+    	fprintf(stderr, "%lu\n", end.tv_sec*1000000 + end.tv_usec);
+    }
 
     close(cli_fd);
 	close(listen_fd);

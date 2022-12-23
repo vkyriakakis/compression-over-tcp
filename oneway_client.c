@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 // Sends the stdin input to the server, which stores it in a file
 // Run with ./client <chunk-size-bytes>
@@ -18,14 +19,17 @@ int main(int argc, char *argv[]) {
 	int chunk_size;
 	int ret;
 	int SERVER_PORT;
+	char should_measure;
+	struct timeval start;
 
-	if (argc != 4) {
-		fprintf(stderr, "Run with ./client <server-ip> <chunk-size-bytes> <server-port>\n");
+	if (argc != 5) {
+		fprintf(stderr, "Run with ./client <server-ip> <chunk-size-bytes> <server-port> <measure [y/n]>\n");
 		return 1;
 	}
 
 	chunk_size = atoi(argv[2]);
 	SERVER_PORT = atoi(argv[3]);
+	should_measure = argv[4][0] == 'y' ? 1 : 0;
 
 	chunk = malloc(chunk_size);
 	if (chunk == NULL) {
@@ -49,6 +53,11 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
+	if (should_measure) {
+		gettimeofday(&start, NULL);
+    	printf("%lu\n", start.tv_sec*1000000 + start.tv_usec);
+	}
+
     while (!is_eof) {
     	bytes_read = fread(chunk, 1, chunk_size, stdin);
     	if (bytes_read < chunk_size) {
@@ -66,7 +75,7 @@ int main(int argc, char *argv[]) {
     		return 1;
     	}
     }
-
+    
     free(chunk);
 	close(sockfd);
 
