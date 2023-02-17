@@ -91,62 +91,62 @@ if __name__ == "__main__":
 	# Gbps Ethernet: 1Gbps, 0.1ms, 0% packet loss
 	# 802.11n (WiFi): 40-50 Mbps, 10ms, 1% packet loss
 
-	# # Gbps Eth
-	avg_tcp_time, avg_lib_time = test(1000, 1000, 0, 0.1, iters, filename, chunk_size)
-	print("Gbps Eth, 0.1ms, 1000, 1000, 0%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
+	# # # Gbps Eth
+	# avg_tcp_time, avg_lib_time = test(1000, 1000, 0, 0.1, iters, filename, chunk_size)
+	# print("Gbps Eth, 0.1ms, 1000, 1000, 0%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
 
-	# 802.11n (WiFi)
-	avg_tcp_time, avg_lib_time = test(40, 40, 1, 10, iters, filename, chunk_size)
-	print("WiFi, 10ms, 40, 40, 1%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
+	# # 802.11n (WiFi)
+	# avg_tcp_time, avg_lib_time = test(40, 40, 1, 10, iters, filename, chunk_size)
+	# print("WiFi, 10ms, 40, 40, 1%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
 
 	# 4G
-	avg_tcp_time, avg_lib_time = test(20, 6, 0, 25, iters, filename, chunk_size)
+	avg_tcp_time, avg_lib_time = test(6, 20, 0, 25, iters, filename, chunk_size)
 	print("4G, 25ms, 20, 6, 0%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
 
 	# 5G
-	avg_tcp_time, avg_lib_time = test(300, 64, 0, 13, iters, filename, chunk_size)
+	avg_tcp_time, avg_lib_time = test(64, 300, 0, 13, iters, filename, chunk_size)
 	print("5G, 13ms, 300, 64, 0%, {}, {}".format(avg_tcp_time, avg_lib_time), flush = True)
 
-	# Delay plot measurements (perfect conditions)
-	bw = 1000
-	lr = 0
-	for d in [0, 1, 5, 10, 20, 40, 60, 100]:
-		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
-		print("{}, {}, {}".format(d, avg_tcp_time, avg_lib_time), flush = True)
+	# # Delay plot measurements (perfect conditions)
+	# bw = 1000
+	# lr = 0
+	# for d in [0, 1, 5, 10, 20, 40, 60, 100]:
+	# 	avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
+	# 	print("{}, {}, {}".format(d, avg_tcp_time, avg_lib_time), flush = True)
 
-	# Bandwidth plot measurements (perfect conditions)
-	d = 0
-	lr = 0
-	for bw in [5, 10, 20, 40, 100, 200, 500, 800, 1000]:
-		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
-		print("{}, {}, {}".format(bw, avg_tcp_time, avg_lib_time), flush = True)
+	# # Bandwidth plot measurements (perfect conditions)
+	# d = 0
+	# lr = 0
+	# for bw in [5, 10, 20, 40, 100, 200, 500, 800, 1000]:
+	# 	avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
+	# 	print("{}, {}, {}".format(bw, avg_tcp_time, avg_lib_time), flush = True)
 
-	# Packet loss plot measurements (perfect conditions)
-	bw = 1000
-	d = 0
-	for lr in [0, 1, 2, 5, 8, 10]:
-		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
-		print("{}, {}, {}".format(lr, avg_tcp_time, avg_lib_time), flush = True)
+	# # Packet loss plot measurements (perfect conditions)
+	# bw = 1000
+	# d = 0
+	# for lr in [0, 1, 2, 5, 8, 10]:
+	# 	avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
+	# 	print("{}, {}, {}".format(lr, avg_tcp_time, avg_lib_time), flush = True)
 
-	# Delay plot measurements (loss, bw)
-	bw = 40
-	lr = 2
-	for d in [0, 1, 5, 10, 20, 40, 60, 100]:
-		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
-		print("{}, {}, {}".format(d, avg_tcp_time, avg_lib_time), flush = True)
+	# # Delay plot measurements (loss, bw)
+	# bw = 40
+	# lr = 2
+	# for d in [0, 1, 5, 10, 20, 40, 60, 100]:
+	# 	avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
+	# 	print("{}, {}, {}".format(d, avg_tcp_time, avg_lib_time), flush = True)
 
-	# Bandwidth plot measurements (delay, loss)
-	d = 20
-	lr = 2  
-	for bw in [5, 10, 20, 40, 100, 200, 500, 800, 1000]:
-		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
-		print("{}, {}, {}".format(bw, avg_tcp_time, avg_lib_time), flush = True)	
+	# # Bandwidth plot measurements (delay, loss)
+	# d = 20
+	# lr = 2  
+	# for bw in [5, 10, 20, 40, 100, 200, 500, 800, 1000]:
+	# 	avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
+	# 	print("{}, {}, {}".format(bw, avg_tcp_time, avg_lib_time), flush = True)	
 
-	# Packet loss plot measurements (bw, delay)
-	bw = 40
-	d = 20
-	for lr in [0, 1, 2, 5, 8, 10]:
-		avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
-		print("{}, {}, {}".format(lr, avg_tcp_time, avg_lib_time), flush = True)
+	# # Packet loss plot measurements (bw, delay)
+	# bw = 40
+	# d = 20
+	# for lr in [0, 1, 2, 5, 8, 10]:
+	# 	avg_tcp_time, avg_lib_time = test(bw, bw, lr, d, iters, filename, chunk_size)
+	# 	print("{}, {}, {}".format(lr, avg_tcp_time, avg_lib_time), flush = True)
 
 
