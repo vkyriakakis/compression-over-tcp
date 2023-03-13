@@ -632,7 +632,7 @@ void _end_measurements(int fd) {
 
         cores = sysconf(_SC_NPROCESSORS_ONLN);
 
-        fprintf(stderr, "%.2lf\n", (cpu_time / cores / real_time) * 100);
+        fprintf(stderr, "%.2lf %lf\n", (cpu_time / cores / real_time) * 100, cpu_time / cores);
 
         #endif
 

@@ -31,7 +31,7 @@ if __name__ == "__main__":
 			comp_times.append(int(comp_time))
 			comp_buf_sizes.append(int(comp_buf_size))
 
-	print((comp_times[-1] - comp_times[0]) / 1000000, file = sys.stderr)
+	#print((comp_times[-1] - comp_times[0]) / 1000000, file = sys.stderr)
 
 	# Connect to the client
 	listen_sock = socket.socket()
@@ -57,7 +57,7 @@ if __name__ == "__main__":
 		print(recv_ts, file = recv_times_log)
 
 	# Print the total time elapsed so far
-	print((recv_times[-1] - recv_times[0]) / 1000000, file = sys.stderr)
+	#print((recv_times[-1] - recv_times[0]) / 1000000, file = sys.stderr)
 
 	cli_sock.close()
 	listen_sock.close()

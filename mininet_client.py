@@ -2,7 +2,7 @@ import time
 import socket
 import sys
 
-# Run with <server_ip> <server_port>
+# Run with <server_ip> <server_port> <cpu time / cores>
 
 if __name__ == "__main__":
 	comp_times = []
@@ -16,18 +16,24 @@ if __name__ == "__main__":
 			comp_buf_sizes.append(int(comp_buf_size))
 
 	# Connect to the mininet server
-	sock = socket.socket()
-	sock.connect((sys.argv[1], int(sys.argv[2])))
+	try:
+		sock = socket.socket()
+		sock.connect((sys.argv[1], int(sys.argv[2])))
+	except:
+		sys.exit(1)
 
-	# Compute the difference from the reference time
-	time_diff = int(time.time()*1000000) - comp_times[0]
+	# Start time for CPU load
+	start_time = time.time()
 
    	# Send data to the server only when the compression time in the log has been reached
 	for k in range(1, len(comp_times)):
-		cur_time = int(time.time()*1000000 - time_diff)
-		if cur_time  < comp_times[k]:
-			time.sleep((comp_times[k] - cur_time) / 1000000)
-
+		time.sleep((comp_times[k] - comp_times[k-1]) / 1000000)
 		sock.sendall(bytearray(comp_buf_sizes[k]))
+
+	# End time for CPU load
+	end_time = time.time()
+
+	# Output the CPU load for the compression side
+	print((float(sys.argv[3]) / (end_time - start_time)) * 100)
 
 	sock.close()
