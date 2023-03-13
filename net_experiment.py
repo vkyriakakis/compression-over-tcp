@@ -102,20 +102,20 @@ if __name__ == "__main__":
 	# 802.11n (WiFi): 40-50 Mbps, 10ms, 1% packet loss
 
 	# # Gbps Eth
-	avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load = test(1000, 1000, 0, 0.1, iters, filename, chunk_size)
-	print("Gbps Eth, 0.1ms, 1000, 1000, 0%, {}, {}, {}, {}".format(avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load), flush = True)
+	# avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load = test(1000, 1000, 0, 0.1, iters, filename, chunk_size)
+	# print("Gbps Eth, 0.1ms, 1000, 1000, 0%, {}, {}, {}, {}".format(avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load), flush = True)
 
-	# 802.11n (WiFi)
-	avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load = test(40, 40, 1, 10, iters, filename, chunk_size)
-	print("WiFi, 10ms, 40, 40, 1%, {}, {}, {}, {}".format(avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load), flush = True)
+	# # 802.11n (WiFi)
+	# avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load = test(40, 40, 1, 10, iters, filename, chunk_size)
+	# print("WiFi, 10ms, 40, 40, 1%, {}, {}, {}, {}".format(avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load), flush = True)
 
-	# 4G
-	avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load = test(6, 20, 0, 25, iters, filename, chunk_size)
-	print("4G, 25ms, 20, 6, 0%, {}, {}, {}, {}".format(avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load), flush = True)
+	# # 4G
+	# avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load = test(6, 20, 0, 25, iters, filename, chunk_size)
+	# print("4G, 25ms, 20, 6, 0%, {}, {}, {}, {}".format(avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load), flush = True)
 
-	# 5G
-	avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load = test(64, 300, 0, 13, iters, filename, chunk_size)
-	print("5G, 13ms, 300, 64, 0%, {}, {}, {}, {}".format(avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load), flush = True)
+	# # 5G
+	# avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load = test(64, 300, 0, 13, iters, filename, chunk_size)
+	# print("5G, 13ms, 300, 64, 0%, {}, {}, {}, {}".format(avg_tcp_time, avg_lib_time, comp_cpu_load, decomp_cpu_load), flush = True)
 
 	# Delay plot measurements (perfect conditions)
 	bw = 1000
