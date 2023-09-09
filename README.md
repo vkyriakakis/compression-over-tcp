@@ -1,27 +1,34 @@
 # thesis
 
+A C library that allows applications to communicate through a compressed TCP stream in a transparent manner
+by intercepting calls to the Unix socket API, that was developed during my thesis. I have also included
+the scripts I used for validation and evaluation, as well as the thesis itself with all the
+implementation details and the performance measurements.
+
 ## Setup
-1. Install Mininet using the instructions at
+- Install Mininet using the instructions at
 http://mininet.org/download/.
 
-2. Compile the test programs (needed for the evaluation platforms):
+## To use with your programs:
+- Compile the library:
+```
+gcc -DBUF_SIZE=204800 -shared -fPIC comp_tcp_lib.c -o comp_tcp_lib.so -ldl -lz
+```
+
+- Run the application with the library being loaded first:
+```
+LD_PRELOAD=$PWD/comp_tcp_lib.so <application-command>
+```
+
+## To run the validation+evaluation scripts:
+
+* Compile the test programs (needed for the evaluation platforms):
 ```
 gcc oneway_client.c -o oneway_client
 gcc oneway_server.c -o oneway_server
 ```
 
-## To use with your programs:
-1. Compile the library:
-```
-gcc -DBUF_SIZE=204800 -shared -fPIC comp_tcp_lib.c -o comp_tcp_lib.so -ldl -lz
-```
-
-2. Run the application with the library being loaded first:
-```
-LD_PRELOAD=$PWD/comp_tcp_lib.so <application-command>
-```
-
-## Compression library metrics:
+### Compression library metrics:
 ```
 ./comp_metrics.sh <iters> <filename1> <filename2> ... <filenameN>
 ```
@@ -31,7 +38,7 @@ where
 
 The measurments are in CSV format and are output in stdout.
 
-## Network measurements:
+### Network measurements:
 ```
 python3.8 net_experiment.py <filename> <chunk_size> <iters> <buf_size>
 ```
